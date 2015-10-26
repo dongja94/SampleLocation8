@@ -1,6 +1,7 @@
 package com.example.dongja94.samplelocation;
 
 import android.Manifest;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -11,6 +12,7 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.location.LocationProvider;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -26,6 +28,7 @@ import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -34,6 +37,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.util.Calendar;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -79,9 +83,39 @@ public class MainActivity extends AppCompatActivity {
 
         locationView = (TextView) findViewById(R.id.text_location);
         listView = (ListView) findViewById(R.id.listView);
-        keywordView = (EditText)findViewById(R.id.edit_keyword);
+        keywordView = (EditText) findViewById(R.id.edit_keyword);
         mAdapter = new ArrayAdapter<Address>(this, android.R.layout.simple_list_item_1);
         listView.setAdapter(mAdapter);
+
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                Address addr = (Address) listView.getItemAtPosition(position);
+
+                float radius = 100;
+                Calendar cal = Calendar.getInstance();
+                cal.set(Calendar.YEAR, 2015);
+                cal.set(Calendar.MONTH, 11);
+                cal.set(Calendar.DAY_OF_MONTH, 25);
+                cal.set(Calendar.HOUR_OF_DAY, 0);
+                cal.set(Calendar.MINUTE, 0);
+                cal.set(Calendar.SECOND, 0);
+                cal.set(Calendar.MILLISECOND, 0);
+                long exired = cal.getTimeInMillis();
+
+                Intent intent = new Intent(MainActivity.this, ProximityService.class);
+                intent.putExtra("address", addr);
+                intent.setData(Uri.parse("myscheme://packagename/"+id));
+                PendingIntent pi = PendingIntent.getService(MainActivity.this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+                if (Build.VERSION.SDK_INT >= 23 && ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                        ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    return;
+                }
+
+                mLM.addProximityAlert(addr.getLatitude(), addr.getLongitude(), radius, exired, pi);
+            }
+        });
 
         Button btn = (Button)findViewById(R.id.btn_search);
         btn.setOnClickListener(new View.OnClickListener() {
